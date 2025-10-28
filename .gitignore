@@ -1,4 +1,11 @@
+**/__pycache__/
+
 .venv
-data/*.csv
 test.ipynb
 grape_paper.pdf
+checkpoints/*
+
+data/*.csv
+data/distance_matrix.npy
+!data/features_small.csv
+!data/targets_small.csv
