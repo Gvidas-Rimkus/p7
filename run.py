@@ -28,7 +28,8 @@ data = get_base_grape_graph(features_path="data/features_small.csv", targets_pat
 data = apply_random_split(data, val_ratio=0.0, test_ratio=0.3)
 
 model = GRAPEModel(data=data,
-                   num_layers=3, 
+                   node_dims=[None, 16, 16],
+                   edge_dims=[None, 16, 16],
                    edge_dropout_rate=0.30)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
