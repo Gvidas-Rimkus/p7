@@ -5,7 +5,7 @@ from models.grape_layer import GRAPELayer
 from models.prediction_model import MLPNet
 
 class GRAPEModel(nn.Module):
-    def __init__(self, data, node_dims, edge_dims, edge_dropout_rate=0.3):
+    def __init__(self, data, node_dims, edge_dims, node_head_dims, edge_head_dims, edge_dropout_rate=0.3):
         super().__init__()
         self.node_dim = data.x.shape[1]
         self.edge_dim = data.edge_attr.shape[1]
@@ -16,13 +16,12 @@ class GRAPEModel(nn.Module):
         node_dims[0] = self.node_dim
         edge_dims[0] = self.edge_dim
 
-        # self.layers = nn.ModuleList([GRAPELayer(self.node_dim, self.edge_dim) for _ in range(self.num_layers)])
         self.layers = nn.ModuleList([
             GRAPELayer(node_dims[i], edge_dims[i], node_dims[i+1], edge_dims[i+1])
             for i in range(len(node_dims)-1)
         ])
-        self.edge_head = MLPNet(input_dim=2 * node_dims[-1], output_dim=1, hidden_layer_sizes=(64,))
-        self.node_head = MLPNet(input_dim=node_dims[-1], output_dim=self.num_prediction_classes, hidden_layer_sizes=(64,))
+        self.node_head = MLPNet(input_dim=node_dims[-1], output_dim=self.num_prediction_classes, hidden_layer_sizes=node_head_dims)
+        self.edge_head = MLPNet(input_dim=2 * node_dims[-1], output_dim=1, hidden_layer_sizes=edge_head_dims)
 
     def drop_edges(self, edge_index, edge_attr):
         if self.edge_dropout_rate == 0.0: 

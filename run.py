@@ -30,6 +30,8 @@ data = apply_random_split(data, val_ratio=0.0, test_ratio=0.3)
 model = GRAPEModel(data=data,
                    node_dims=[None, 16, 16],
                    edge_dims=[None, 16, 16],
+                   node_head_dims=[None, 64],
+                   edge_head_dims=[None, 64],
                    edge_dropout_rate=0.30)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 

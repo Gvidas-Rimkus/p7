@@ -3,7 +3,8 @@ import torch.nn as nn
 import numpy as np
 
 class MLPNet(torch.nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_layer_sizes=(64,)):
+    def __init__(self, input_dim, output_dim, hidden_layer_sizes):
+        hidden_layer_sizes[0] = input_dim
         super(MLPNet, self).__init__()
         layers = nn.ModuleList()
         for layer_size in hidden_layer_sizes:
