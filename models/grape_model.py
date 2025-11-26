@@ -118,11 +118,11 @@ class GRAPEModel(nn.Module):
         edge_pred = self.edge_head(edge_input).squeeze(-1)
         if self.new:
             hat_D = self.reconstruct_dense_features(h, data)
-            padding_size = y.shape[0] - hat_D.shape[0]
+            padding_size = data.y.shape[0] - hat_D.shape[0]
             padding = torch.zeros(padding_size, hat_D.shape[1], device=hat_D.device, dtype=hat_D.dtype)
             hat_D_padded = torch.cat([hat_D, padding], dim = 0)
-            node_pred = self.node_head_new(hat_D_padded[data.train_mask, :]).squeeze(-1)
+            node_pred = self.node_head_new(hat_D_padded[node_mask, :]).squeeze(-1)
         else: 
-            node_pred = self.node_head(h[data.train_mask, :]).squeeze(-1)
+            node_pred = self.node_head(h[node_mask, :]).squeeze(-1)
 
         return edge_pred, e_true.squeeze(-1), node_pred, y_true
