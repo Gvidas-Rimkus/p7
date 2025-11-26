@@ -38,3 +38,20 @@ def get_base_grape_graph(features_path, targets_path):
 
     graph = Data(edge_index=edge_index, edge_attr=edge_attr, x=x, y=y)
     return graph
+
+def add_edge2dense_idx(data):
+    source, target = data.edge_index
+    n_obs = data.x.shape[0] - data.x.shape[1]
+    n_feat = data.x.shape[1]
+
+    mask = source < n_obs
+    source = source[mask]
+    target = target[mask]
+
+    obs_idx = source
+    feat_idx = target - n_obs
+    edge2dense_idx = obs_idx * n_feat + feat_idx
+
+    data.edge2dense_idx = edge2dense_idx
+    data.edge_mask_obs_to_feat = mask
+    return data

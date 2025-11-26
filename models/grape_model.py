@@ -5,13 +5,14 @@ from models.grape_layer import GRAPELayer
 from models.prediction_model import MLPNet
 
 class GRAPEModel(nn.Module):
-    def __init__(self, data, node_dims, edge_dims, node_head_dims, edge_head_dims, edge_dropout_rate=0.3):
+    def __init__(self, data, node_dims, edge_dims, node_head_dims, edge_head_dims, edge_dropout_rate=0.3, new=False):
         super().__init__()
         self.node_dim = data.x.shape[1]
         self.edge_dim = data.edge_attr.shape[1]
         self.num_prediction_nodes = data.y.shape[0]
         self.num_prediction_classes = data.y.shape[1]
         self.edge_dropout_rate = edge_dropout_rate
+        self.new = new
 
         node_dims[0] = self.node_dim
         edge_dims[0] = self.edge_dim
@@ -21,6 +22,7 @@ class GRAPEModel(nn.Module):
             for i in range(len(node_dims)-1)
         ])
         self.node_head = MLPNet(input_dim=node_dims[-1], output_dim=self.num_prediction_classes, hidden_layer_sizes=node_head_dims)
+        self.node_head_new = MLPNet(input_dim=data.x.shape[1], output_dim=self.num_prediction_classes, hidden_layer_sizes=node_head_dims)
         self.edge_head = MLPNet(input_dim=2 * node_dims[-1], output_dim=1, hidden_layer_sizes=edge_head_dims)
 
     def drop_edges(self, edge_index, edge_attr):
@@ -35,6 +37,22 @@ class GRAPEModel(nn.Module):
             edge_index[:, ~mask],
             edge_attr[~mask]
         )
+
+    def reconstruct_dense_features(self, h, data):
+        n_obs = data.x.shape[0] - data.x.shape[1]
+        n_feat = data.x.shape[1]
+        h_obs = h[:n_obs]
+        h_feat = h[n_obs:]
+
+        h_obs_exp = h_obs.repeat_interleave(n_feat, dim=0)
+        h_feat_exp = h_feat.repeat(n_obs, 1)
+        edge_inputs = torch.cat([h_obs_exp, h_feat_exp], dim=-1)
+        edge_preds = self.edge_head(edge_inputs).squeeze(-1)
+
+        edge_preds[data.edge2dense_idx] = data.edge_attr[data.edge_mask_obs_to_feat].squeeze(-1)
+
+        hat_D = edge_preds.view(n_obs, n_feat)
+        return hat_D
 
     def forward(self, data):
         h = data.x
@@ -63,7 +81,14 @@ class GRAPEModel(nn.Module):
         edge_pred = self.edge_head(edge_input).squeeze(-1)
 
         #Node prediction for observations noderne
-        node_pred = self.node_head(h[data.train_mask, :]).squeeze(-1)
+        if self.new:
+            hat_D = self.reconstruct_dense_features(h, data)
+            padding_size = y.shape[0] - hat_D.shape[0]
+            padding = torch.zeros(padding_size, hat_D.shape[1], device=hat_D.device, dtype=hat_D.dtype)
+            hat_D_padded = torch.cat([hat_D, padding], dim = 0)
+            node_pred = self.node_head_new(hat_D_padded[data.train_mask, :]).squeeze(-1)
+        else: 
+            node_pred = self.node_head(h[data.train_mask, :]).squeeze(-1)
 
         return edge_pred, dropped_e.squeeze(-1), node_pred, y[data.train_mask, :]
     

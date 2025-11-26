@@ -2,7 +2,7 @@ import torch
 
 def apply_random_split(data, val_ratio=0.1, test_ratio=0.2):
     num_nodes = data.num_nodes
-    n_obs = data.y.size(0) #vi splitter kun noderne med tilhørende y, da de andre ikke skal prædikteres på
+    n_obs = data.x.shape[0] - data.x.shape[1]
     perm = torch.randperm(n_obs)
     n_val = int(val_ratio * n_obs)
     n_test = int(test_ratio * n_obs)
