@@ -28,7 +28,7 @@ new = True
 #test på en lille subset lavet af: 30 features, 400 sample_sites og 200 targets.
 # data = get_base_grape_graph(features_path="data/features_small.csv", targets_path="data/targets_small.csv")
 data = get_grape_site_connectivity_graph(features_path="data/features_small.csv", targets_path="data/targets_small.csv", distance_threshold=1)
-if new: data = add_edge2dense_idx(data)
+if new: data = add_edge2dense_idx(data, n_cont_feats=181)
 data = apply_random_split(data, val_ratio=0.0, test_ratio=0.3)
 
 model = GRAPEModel(data=data,

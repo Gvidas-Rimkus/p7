@@ -33,8 +33,18 @@ model.load_state_dict(state_dict, strict=False)
 
 
 split = "validation"
-edge_pred, edge_true, node_pred, node_true = model.evaluate(data, split=split)
-edge_loss = F.mse_loss(edge_pred, edge_true)
+edge_pred, edge_true, node_pred, node_true, dropped_is_cont = model.evaluate(data, split=split)
+cont_mask = dropped_is_cont
+cat_mask = ~dropped_is_cont
+
+pred_cont = edge_pred[cont_mask]
+true_cont = edge_true[cont_mask]
+pred_cat = edge_pred[cat_mask]
+true_cat = edge_true[cat_mask]
+
+edge_loss_cont = torch.sqrt(F.mse_loss(pred_cont, true_cont))
+edge_loss_cat = F.binary_cross_entropy_with_logits(pred_cat, true_cat)
+edge_loss = edge_loss_cont + edge_loss_cat
 node_loss = F.binary_cross_entropy_with_logits(node_pred, node_true)
 total_loss = edge_loss + node_loss
 

@@ -39,7 +39,7 @@ def get_base_grape_graph(features_path, targets_path):
     graph = Data(edge_index=edge_index, edge_attr=edge_attr, x=x, y=y)
     return graph
 
-def add_edge2dense_idx(data):
+def add_edge2dense_idx(data, n_cont_feats):
     source, target = data.edge_index
     n_obs = data.x.shape[0] - data.x.shape[1]
     n_feat = data.x.shape[1]
@@ -54,4 +54,16 @@ def add_edge2dense_idx(data):
 
     data.edge2dense_idx = edge2dense_idx
     data.edge_mask_obs_to_feat = mask
+    
+    #tracker om edges er kategoriske eller kontinuere
+    source, target = data.edge_index
+    feat_node_all = torch.where(source >= n_obs, source, target)
+
+    feat_idx_all = feat_node_all - n_obs
+
+    edge_is_cont = feat_idx_all < n_cont_feats
+    edge_is_cat  = ~edge_is_cont
+
+    data.edge_is_cont = edge_is_cont
+    data.edge_is_cat  = edge_is_cat
     return data

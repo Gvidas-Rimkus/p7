@@ -27,6 +27,7 @@ class GRAPEModel(nn.Module):
 
     def drop_edges(self, edge_index, edge_attr):
         if self.edge_dropout_rate == 0.0: 
+            mask = torch.ones(num_edges, dtype=torch.bool, device=edge_index.device)
             return edge_index, edge_attr, None, None
 
         num_edges = edge_index.size(1)
@@ -35,7 +36,8 @@ class GRAPEModel(nn.Module):
             edge_index[:, mask],
             edge_attr[mask],
             edge_index[:, ~mask],
-            edge_attr[~mask]
+            edge_attr[~mask],
+            mask
         )
 
     def reconstruct_dense_features(self, h, data):
@@ -60,12 +62,15 @@ class GRAPEModel(nn.Module):
 
         edge_index = data.edge_index[:, data.train_edge_mask]
         e = data.edge_attr[data.train_edge_mask]
+        edge_is_cont = data.edge_is_cont[data.train_edge_mask]
 
         if self.training and self.edge_dropout_rate > 0.0:
-            edge_index, e, dropped_edge_index, dropped_e = self.drop_edges(edge_index, e)
+            edge_index, e, dropped_edge_index, dropped_e, keep_mask = self.drop_edges(edge_index, e)
+            dropped_is_cont = edge_is_cont[~keep_mask]    
         else:
             dropped_edge_index = edge_index
             dropped_e = e
+            dropped_is_cont = edge_is_cont
 
         # tilføjer message passing mellem sites, når grape_site_connectivity_graph trænes.
         if hasattr(data, 'site2site_edge_index'):
@@ -90,7 +95,7 @@ class GRAPEModel(nn.Module):
         else: 
             node_pred = self.node_head(h[data.train_mask, :]).squeeze(-1)
 
-        return edge_pred, dropped_e.squeeze(-1), node_pred, y[data.train_mask, :]
+        return edge_pred, dropped_e.squeeze(-1), node_pred, y[data.train_mask, :], dropped_is_cont
     
     def evaluate(self, data, split):
         if split == "validation":
@@ -98,13 +103,14 @@ class GRAPEModel(nn.Module):
             e_true = data.edge_attr[data.val_edge_mask]
             node_mask = data.val_mask
             y_true = data.y[data.val_mask, :]
+            edge_is_cont = data.edge_is_cont[data.val_edge_mask]
 
         else:
             eval_edge_index = data.edge_index[:, data.test_edge_mask]
             e_true = data.edge_attr[data.test_edge_mask]
             node_mask = data.test_mask
             y_true = data.y[data.test_mask, :]
-        
+            edge_is_cont = data.edge_is_cont[data.test_mask]
         #message passing altid kun på train_split så der ikke leakes
         edge_index = data.edge_index[:, data.train_edge_mask]
         e = data.edge_attr[data.train_edge_mask]
@@ -125,4 +131,4 @@ class GRAPEModel(nn.Module):
         else: 
             node_pred = self.node_head(h[node_mask, :]).squeeze(-1)
 
-        return edge_pred, e_true.squeeze(-1), node_pred, y_true
+        return edge_pred, e_true.squeeze(-1), node_pred, y_true, edge_is_cont
